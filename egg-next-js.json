@@ -6,7 +6,7 @@
     },
     "exported_at": "2026-04-10T21:16:58+08:00",
     "name": "Next JS",
-    "author": "ok.shiroko@zass.cloud",
+    "author": "support@pterokudesu.com",
     "description": "Host a Next.js application with reliable 0.0.0.0 binding and auto package manager detection.",
     "features": [],
     "docker_images": {
