@@ -1,0 +1,129 @@
+{
+    "_comment": "DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY PTERODACTYL PANEL - PTERODACTYL.IO",
+    "meta": {
+        "version": "PTDL_v2",
+        "update_url": null
+    },
+    "exported_at": "2026-08-02T09:28:31+08:00",
+    "name": "Next JS (pm2 + console cmd)",
+    "author": "ok.shiroko@zass.cloud",
+    "description": "Host a Next.js application with reliable 0.0.0.0 binding, auto package manager detection, pm2 process management (zero-downtime reload), authenticated private git clone, and optional live console command execution.",
+    "features": [],
+    "docker_images": {
+        "Nodejs 25": "ghcr.io\/parkervcp\/yolks:nodejs_25",
+        "Nodejs 24": "ghcr.io\/parkervcp\/yolks:nodejs_24",
+        "Nodejs 23": "ghcr.io\/parkervcp\/yolks:nodejs_23",
+        "Nodejs 22": "ghcr.io\/parkervcp\/yolks:nodejs_22",
+        "Nodejs 21": "ghcr.io\/parkervcp\/yolks:nodejs_21",
+        "Nodejs 20": "ghcr.io\/parkervcp\/yolks:nodejs_20",
+        "Nodejs 19": "ghcr.io\/parkervcp\/yolks:nodejs_19",
+        "Nodejs 18": "ghcr.io\/parkervcp\/yolks:nodejs_18"
+    },
+    "file_denylist": [],
+    "startup": "cd \/home\/container;\n\nexport NPM_CONFIG_PREFIX=\"\/home\/container\/.npm-global\";\nexport PATH=\"$NPM_CONFIG_PREFIX\/bin:$PATH\";\nmkdir -p \"$NPM_CONFIG_PREFIX\";\n\nbuild_git_url() {\n    local url=\"$1\";\n    if [[ \"$url\" != *.git ]]; then\n        url=\"${url%\/}.git\";\n    fi;\n    if [ -n \"${USERNAME}\" ] && [ -n \"${ACCESS_TOKEN}\" ]; then\n        url=\"https:\/\/${USERNAME}:${ACCESS_TOKEN}@$(echo \"$url\" | cut -d\/ -f3-)\";\n    fi;\n    echo \"$url\";\n};\n\nif [ ! \"$(ls -A \/home\/container 2>\/dev\/null)\" ]; then\n    echo \"Container kosong\";\n    if [ -n \"${GIT_URL}\" ]; then\n        FULL_URL=$(build_git_url \"${GIT_URL}\");\n        if [ -z \"${GIT_BRANCH}\" ]; then\n            git clone \"${FULL_URL}\" \/home\/container;\n        else\n            git clone --single-branch --branch \"${GIT_BRANCH}\" \"${FULL_URL}\" \/home\/container;\n        fi;\n    fi;\nfi;\n\nif [ ! -f package.json ]; then\n    echo \"No package.json\";\n    exit 1;\nfi;\n\ncorepack enable >\/dev\/null 2>&1 || true;\nexport NEXT_TELEMETRY_DISABLED=1;\n\nif [ -f pnpm-lock.yaml ]; then\n    PM=\"pnpm\";\nelif [ -f yarn.lock ]; then\n    PM=\"yarn\";\nelse\n    PM=\"npm\";\nfi;\necho \"PM: $PM\";\n\nif [ \"${AUTO_UPDATE}\" = \"1\" ] && [ -d .git ] && [ -n \"${GIT_URL}\" ]; then\n    echo \"Auto update: pulling latest changes...\";\n    FULL_URL=$(build_git_url \"${GIT_URL}\");\n    git remote set-url origin \"${FULL_URL}\";\n    git pull;\nfi;\n\necho \"Installing dependencies...\";\nif [ \"$PM\" = \"pnpm\" ]; then pnpm install; elif [ \"$PM\" = \"yarn\" ]; then yarn install; else npm install; fi;\n\nif [ \"${NODE_RUN_ENV}\" = \"start\" ]; then\n    echo \"Build...\";\n    if [ \"$PM\" = \"pnpm\" ]; then pnpm run build; elif [ \"$PM\" = \"yarn\" ]; then yarn build; else npm run build; fi;\nfi;\n\ncommand -v pm2 >\/dev\/null 2>&1 || npm install -g pm2;\n\necho \"Run mode: ${NODE_RUN_ENV}\";\n\nif [ \"${NODE_RUN_ENV}\" = \"dev\" ]; then\n    if [ \"$PM\" = \"pnpm\" ]; then pm2 start pnpm --name app --no-autorestart=false -- dev -p ${SERVER_PORT};\n    elif [ \"$PM\" = \"yarn\" ]; then pm2 start yarn --name app -- dev -p ${SERVER_PORT};\n    else pm2 start npm --name app -- run dev -- -p ${SERVER_PORT}; fi;\nelse\n    if [ \"$PM\" = \"pnpm\" ]; then pm2 start pnpm --name app -- start -p ${SERVER_PORT};\n    elif [ \"$PM\" = \"yarn\" ]; then pm2 start yarn --name app -- start -p ${SERVER_PORT};\n    else pm2 start npm --name app -- run start -- -p ${SERVER_PORT}; fi;\nfi;\n\npm2 logs app --raw &\n\nwhile read -r cmd; do\n    if [ \"$cmd\" = \"app-stop\" ]; then\n        echo \"Stopping application via pm2...\";\n        pm2 delete app >\/dev\/null 2>&1;\n        break;\n    fi;\n    if [ \"${ENABLE_CONSOLE_CMD}\" = \"1\" ]; then\n        eval \"$cmd\";\n    fi;\ndone",
+    "config": {
+        "files": "{}",
+        "startup": "{\r\n    \"done\": \"Ready in\"\r\n}",
+        "logs": "{}",
+        "stop": "app-stop"
+    },
+    "scripts": {
+        "installation": {
+            "script": "#!\/bin\/bash\n# NodeJS App Installation Script\napt update\napt install -y git curl jq file unzip make gcc g++ python3 libtool\n\nmkdir -p \/mnt\/server\ncd \/mnt\/server\n\nbuild_git_url() {\n    local url=\"$1\"\n    if [[ \"$url\" != *.git ]]; then\n        url=\"${url%\/}.git\"\n    fi\n    if [ -n \"${USERNAME}\" ] && [ -n \"${ACCESS_TOKEN}\" ]; then\n        url=\"https:\/\/${USERNAME}:${ACCESS_TOKEN}@$(echo \"$url\" | cut -d\/ -f3-)\"\n    fi\n    echo \"$url\"\n}\n\nif [ -n \"${GIT_URL}\" ]; then\n    FULL_URL=$(build_git_url \"${GIT_URL}\")\n\n    if [ ! \"$(ls -A \/mnt\/server)\" ]; then\n        echo -e \"cloning files into repo\"\n        if [ -z \"${GIT_BRANCH}\" ]; then\n            git clone \"${FULL_URL}\" .\n        else\n            git clone --single-branch --branch \"${GIT_BRANCH}\" \"${FULL_URL}\" .\n        fi\n    fi\nfi\n\nif [ ! -f \/mnt\/server\/package.json ] && [ -n \"${NEXT_VERSION}\" ]; then\n    echo -e \"package.json not found, scaffolding a new Next.js app (version: ${NEXT_VERSION})\"\n    cd \/mnt\/server\n    if [ \"${NEXT_VERSION}\" = \"latest\" ]; then\n        npx --yes create-next-app@latest . --yes\n    else\n        npx --yes create-next-app@${NEXT_VERSION} . --yes\n    fi\nfi\n\nif [ -f \/mnt\/server\/package.json ]; then\n    corepack enable >\/dev\/null 2>&1 || true\n    PM_CHOICE=${PACKAGE_MANAGER:-auto}\n\n    if [ \"${PM_CHOICE}\" = \"auto\" ]; then\n        if [ -f \/mnt\/server\/pnpm-lock.yaml ]; then\n            PM_CHOICE=pnpm\n        elif [ -f \/mnt\/server\/yarn.lock ]; then\n            PM_CHOICE=yarn\n        else\n            PM_CHOICE=npm\n        fi\n    fi\n\n    echo -e \"using package manager: ${PM_CHOICE}\"\n\n    # NOTE: full install (incl. devDependencies) is required here because\n    # `npm run build` \/ `next build` needs devDependencies (typescript, etc.)\n    # when NODE_RUN_ENV=start builds at container startup.\n    if [ \"${PM_CHOICE}\" = \"pnpm\" ]; then\n        if [ -f \/mnt\/server\/pnpm-lock.yaml ]; then\n            pnpm install --frozen-lockfile\n        else\n            pnpm install\n        fi\n    elif [ \"${PM_CHOICE}\" = \"yarn\" ]; then\n        yarn install\n    else\n        if [ -f \/mnt\/server\/package-lock.json ] || [ -f \/mnt\/server\/npm-shrinkwrap.json ]; then\n            npm ci\n        else\n            npm install\n        fi\n    fi\n\nfi\n\necho -e \"install complete\"\nexit 0",
+            "container": "node:20-bullseye-slim",
+            "entrypoint": "bash"
+        }
+    },
+    "variables": [
+        {
+            "name": "Next.js Version",
+            "description": "Versi Next.js yang di-install jika folder server & git repository  url kosong.",
+            "env_variable": "NEXT_VERSION",
+            "default_value": "latest",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Node ENV",
+            "description": "Mode menjalankan aplikasi. 'start' = mode production, aplikasi di-build otomatis dulu sebelum dijalankan (dipakai untuk server yang online ke publik). \r\n\r\n'dev' = mode development, tanpa build, perubahan real-time (hot reload), cocok untuk testing & pengembangan, jangan dipakai untuk server publik karena lebih lambat & belum optimal.",
+            "env_variable": "NODE_RUN_ENV",
+            "default_value": "start",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|in:start,dev",
+            "field_type": "text"
+        },
+        {
+            "name": "Package Manager",
+            "description": "Tools yang dipakai untuk install dependencies project.",
+            "env_variable": "PACKAGE_MANAGER",
+            "default_value": "auto",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|in:auto,npm,pnpm,yarn",
+            "field_type": "text"
+        },
+        {
+            "name": "Git Repository URL",
+            "description": "Alamat repository Git yang mau di-clone otomatis ke server saat instalasi pertama kali. Contoh: https:\/\/github.com\/username\/nama-repo.git. Kalau repo-nya private, isi juga Git Username dan Git Access Token di bawah, kalau tidak clone akan gagal.\r\n\r\nCATATAN: Hanya berlaku jika folder server kosong",
+            "env_variable": "GIT_URL",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Branch",
+            "description": "Nama branch dari repository yang mau dipakai, contoh: main, master, atau develop. Kosongkan untuk otomatis pakai branch default repository tersebut.",
+            "env_variable": "GIT_BRANCH",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Auto Update",
+            "description": "Kalau diisi 1, server otomatis mengambil update terbaru dari Git Repository URL (git pull) setiap kali server di-restart\/dinyalakan. Isi 0 kalau kamu mau update kode secara manual sendiri.",
+            "env_variable": "AUTO_UPDATE",
+            "default_value": "0",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Git Username",
+            "description": "Username akun Git kamu (GitHub\/GitLab\/dll). Hanya perlu diisi kalau repo di Git Repository URL bersifat PRIVATE. Kalau repo-nya publik, biarkan kosong.",
+            "env_variable": "USERNAME",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Git Access Token",
+            "description": "Personal Access Token dari akun Git kamu. Hanya perlu diisi kalau repo di Git Repository URL bersifat PRIVATE, dan harus diisi berbarengan dengan Git Username di atas. Di GitHub, token ini dibuat lewat Settings > Developer settings > Personal access tokens.",
+            "env_variable": "ACCESS_TOKEN",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "password"
+        },
+        {
+            "name": "Enable Console Commands (beta)",
+            "description": "Kalau diisi 1, kolom Console di panel bisa dipakai untuk mengetik perintah bebas seperti npm install atau pm2 reload app.\r\n\r\nPERINGATAN: siapa pun yang punya akses Console ke server ini (termasuk subuser tambahan yang kamu invite) otomatis bisa menjalankan perintah apa saja di dalam server. Biarkan 0 (mati) kalau server ini bakal dipakai\/diakses orang lain selain kamu.",
+            "env_variable": "ENABLE_CONSOLE_CMD",
+            "default_value": "0",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "field_type": "text"
+        }
+    ]
+}

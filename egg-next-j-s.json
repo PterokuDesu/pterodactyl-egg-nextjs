@@ -1,0 +1,119 @@
+{
+    "_comment": "DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY PTERODACTYL PANEL - PTERODACTYL.IO",
+    "meta": {
+        "version": "PTDL_v2",
+        "update_url": null
+    },
+    "exported_at": "2026-04-10T21:16:58+08:00",
+    "name": "Next JS",
+    "author": "ok.shiroko@zass.cloud",
+    "description": "Host a Next.js application with reliable 0.0.0.0 binding and auto package manager detection.",
+    "features": [],
+    "docker_images": {
+        "Nodejs 25": "ghcr.io\/parkervcp\/yolks:nodejs_25",
+        "Nodejs 24": "ghcr.io\/parkervcp\/yolks:nodejs_24",
+        "Nodejs 23": "ghcr.io\/parkervcp\/yolks:nodejs_23",
+        "Nodejs 22": "ghcr.io\/parkervcp\/yolks:nodejs_22",
+        "Nodejs 21": "ghcr.io\/parkervcp\/yolks:nodejs_21",
+        "Nodejs 20": "ghcr.io\/parkervcp\/yolks:nodejs_20",
+        "Nodejs 19": "ghcr.io\/parkervcp\/yolks:nodejs_19",
+        "Nodejs 18": "ghcr.io\/parkervcp\/yolks:nodejs_18"
+    },
+    "file_denylist": [],
+    "startup": "cd \/home\/container;  if [ ! \"$(ls -A \/home\/container 2>\/dev\/null)\" ]; then    echo \"Container kosong\";    if [ -n \"${GIT_URL}\" ]; then      git clone \"${GIT_URL}\" \/home\/container;    fi;  fi;   if [ ! -f package.json ]; then    echo \"No package.json\";    exit 1;  fi;   corepack enable >\/dev\/null 2>&1 || true;   if [ -f pnpm-lock.yaml ]; then    PM=\"pnpm\";  elif [ -f yarn.lock ]; then    PM=\"yarn\";  else    PM=\"npm\";  fi;   echo \"PM: $PM\";   if [ \"$PM\" = \"pnpm\" ]; then pnpm install; elif [ \"$PM\" = \"yarn\" ]; then yarn install; else npm install; fi;   if [ \"${NODE_RUN_ENV}\" = \"start\" ]; then    echo \"Build...\";    if [ \"$PM\" = \"pnpm\" ]; then pnpm run build;   elif [ \"$PM\" = \"yarn\" ]; then yarn build;   else npm run build; fi;  fi;   echo \"Run mode: ${NODE_RUN_ENV}\";   if [ \"${NODE_RUN_ENV}\" = \"dev\" ]; then    if [ \"$PM\" = \"pnpm\" ]; then pnpm dev -p ${SERVER_PORT};   elif [ \"$PM\" = \"yarn\" ]; then yarn dev -p ${SERVER_PORT};   else npm run dev -- -p ${SERVER_PORT}; fi;  else    if [ \"$PM\" = \"pnpm\" ]; then pnpm start -p ${SERVER_PORT};   elif [ \"$PM\" = \"yarn\" ]; then yarn start -p ${SERVER_PORT};   else npm run start -- -p ${SERVER_PORT}; fi;  fi",
+    "config": {
+        "files": "{}",
+        "startup": "{\r\n    \"done\": \"Ready in\"\r\n}",
+        "logs": "{}",
+        "stop": "^^C"
+    },
+    "scripts": {
+        "installation": {
+            "script": "#!\/bin\/bash\r\n# NodeJS App Installation Script\r\napt update\r\napt install -y git curl jq file unzip make gcc g++ python3 libtool\r\n\r\nmkdir -p \/mnt\/server\r\ncd \/mnt\/server\r\n\r\nif [ -n \"${GIT_URL}\" ]; then\r\n    if [[ ${GIT_URL} != *.git ]]; then\r\n        GIT_URL=${GIT_URL%\/} \r\n        GIT_URL=${GIT_URL}.git\r\n    fi\r\n\r\n    if [ -z \"${USERNAME}\" ] && [ -z \"${ACCESS_TOKEN}\" ]; then\r\n        echo -e \"using anon api call\"\r\n    else\r\n        GIT_URL=\"https:\/\/${USERNAME}:${ACCESS_TOKEN}@$(echo -e ${GIT_URL} | cut -d\/ -f3-)\"\r\n    fi\r\n\r\n    if [ ! \"$(ls -A \/mnt\/server)\" ]; then\r\n        echo -e \"cloning files into repo\"\r\n        if [ -z \"${GIT_BRANCH}\" ]; then\r\n            git clone \"${GIT_URL}\" .\r\n        else\r\n            git clone --single-branch --branch \"${GIT_BRANCH}\" \"${GIT_URL}\" .\r\n        fi\r\n    fi\r\nfi\r\n\r\nif [ -f \/mnt\/server\/package.json ]; then\r\n    corepack enable >\/dev\/null 2>&1 || true\r\n    PM_CHOICE=${PACKAGE_MANAGER:-auto}\r\n\r\n    if [ \"${PM_CHOICE}\" = \"auto\" ]; then\r\n        if [ -f \/mnt\/server\/pnpm-lock.yaml ]; then\r\n            PM_CHOICE=pnpm\r\n        elif [ -f \/mnt\/server\/yarn.lock ]; then\r\n            PM_CHOICE=yarn\r\n        else\r\n            PM_CHOICE=npm\r\n        fi\r\n    fi\r\n\r\n    echo -e \"using package manager: ${PM_CHOICE}\"\r\n\r\n    if [ \"${PM_CHOICE}\" = \"pnpm\" ]; then\r\n        if [ -f \/mnt\/server\/pnpm-lock.yaml ]; then\r\n            pnpm install --prod --frozen-lockfile\r\n        else\r\n            pnpm install --prod\r\n        fi\r\n    elif [ \"${PM_CHOICE}\" = \"yarn\" ]; then\r\n        yarn install --production=true\r\n    else\r\n        if [ -f \/mnt\/server\/package-lock.json ] || [ -f \/mnt\/server\/npm-shrinkwrap.json ]; then\r\n            \/usr\/local\/bin\/npm ci --omit=dev\r\n        else\r\n            \/usr\/local\/bin\/npm install --omit=dev\r\n        fi\r\n    fi\r\nfi\r\n\r\necho -e \"install complete\"\r\nexit 0",
+            "container": "node:20-bullseye-slim",
+            "entrypoint": "bash"
+        }
+    },
+    "variables": [
+        {
+            "name": "Next.js Version",
+            "description": "The version of Next.js to install if package.json is missing (e.g., 'latest' or '16.0.10').",
+            "env_variable": "NEXT_VERSION",
+            "default_value": "latest",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Node ENV",
+            "description": "Runtime mode for Next.js command: use 'start' for production or 'dev' for development.",
+            "env_variable": "NODE_RUN_ENV",
+            "default_value": "start",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|in:start,dev",
+            "field_type": "text"
+        },
+        {
+            "name": "Package Manager",
+            "description": "Choose package manager: auto (detect by lockfile), npm, pnpm, or yarn.",
+            "env_variable": "PACKAGE_MANAGER",
+            "default_value": "auto",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|in:auto,npm,pnpm,yarn",
+            "field_type": "text"
+        },
+        {
+            "name": "Git Repository URL",
+            "description": "Optional: Repo to clone.",
+            "env_variable": "GIT_URL",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Branch",
+            "description": "Which branch to install",
+            "env_variable": "GIT_BRANCH",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Auto Update",
+            "description": "Pull from git on startup (0 for false, 1 for true)",
+            "env_variable": "AUTO_UPDATE",
+            "default_value": "0",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Git Username",
+            "description": "Username for git auth",
+            "env_variable": "USERNAME",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Git Access Token",
+            "description": "Token for git auth",
+            "env_variable": "ACCESS_TOKEN",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        }
+    ]
+}
